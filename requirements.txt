@@ -1,0 +1,10 @@
+django
+django-rest-framework
+djangorestframework-simplejwt
+django-ninja
+psycopg2-binary
+python-dotenv
+requests
+django-phonenumber-field
+phonenumbers
+django-cors-headers
