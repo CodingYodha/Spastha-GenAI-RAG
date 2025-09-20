@@ -73,12 +73,15 @@ def generate_signed_url_v4(request):
             ['content-length-range', 1, MAX_FILE_SIZE],  # File size constraints
         ]
         
-        # Generate a signed URL that is valid for 15 minutes
+        function_service_account_email = "992685094776-compute@developer.gserviceaccount.com"
+        # Generate a signed URL that is valid for 15 minutes    
         url = blob.generate_signed_url(
             version="v4",
             expiration=datetime.timedelta(minutes=15),
             method="PUT",
             content_type="application/pdf",  # Enforce PDF uploads
+            service_account_email=function_service_account_email,
+            
             headers={
                 'x-goog-content-length-range': f'1,{MAX_FILE_SIZE}'
             }
