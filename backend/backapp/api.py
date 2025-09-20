@@ -1,9 +1,9 @@
 import requests
 from django.conf import settings
 from ninja import NinjaAPI
-from .schema import LoginSchema, SignupSchema, TokenSchema
+from .schema import LoginSchema, SignupSchema, TokenSchema, ChatMessageSchema
 from django.contrib.auth import authenticate
-from .models import SpashtUser
+from .models import SpashtUser, ChatMessage
 from rest_framework_simplejwt.tokens import RefreshToken
 from ninja.errors import ValidationError
 from rest_framework_simplejwt.views import TokenRefreshView
@@ -14,6 +14,7 @@ from django.utils.encoding import force_bytes
 import google.auth.transport.requests
 from google.auth import impersonated_credentials
 from google.auth import jwt 
+from typing import List
 
 api = NinjaAPI(title="Spasht API Docs")
 
@@ -126,3 +127,21 @@ def login(request, data: LoginSchema):
 
     refresh = RefreshToken.for_user(user)
     return {"access": str(refresh.access_token), "refresh": str(refresh)}
+
+@api.post("/chat/save", response=ChatMessageSchema)
+def save_chat(request, message: str, is_bot: bool):
+    if not request.user.is_authenticated:
+        return api.create_response(request, {"error": "Unauthorized"}, status=401)
+    chat  =ChatMessage.objects.create(
+        user = request.user, 
+        message= message,
+        is_bot = is_bot
+    )
+    return chat
+
+@api.get("/chat/history", response=List[ChatMessageSchema])
+def chat_history(request):
+    if not request.user.is_authenticated:
+        return api.create_response(request, {"error": "Unauthorized"}, status=401)
+    chats = ChatMessage.objects.filter(user=request.user).order_by("timestamp")
+    return chats

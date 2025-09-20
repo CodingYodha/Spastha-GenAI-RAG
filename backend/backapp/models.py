@@ -15,3 +15,12 @@ class SpashtUser(AbstractUser):
     mobile_no = PhoneNumberField(blank=True, null=True, unique=True)
     def __str__(self):
         return self.username
+    
+class ChatMessage(models.Model):
+    user = models.ForeignKey(SpashtUser, on_delete=models.CASCADE, related_name="chat_messages")
+    message = models.TextField()
+    is_bot = models.BooleanField(default=False)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    def __str__(self):
+        who = "bot" if self.is_bot is True else "user"
+        return f"{who}:{self.message[:30]}..."
