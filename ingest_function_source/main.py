@@ -1,63 +1,50 @@
+# FUNCTION 1: Document Ingestion
 import functions_framework
 import os
+import re
 from google.cloud import discoveryengine_v1 as discoveryengine
 from google.api_core.client_options import ClientOptions
 
-# --- CONFIGURATION ---
-PROJECT_ID = "spastha-genai-exchange-google"
+# --- FINAL CONFIGURATION ---
+PROJECT_ID = "eminent-cycle-472512-u1"
 LOCATION = "global"
-DATA_STORE_ID = "spastha-doc-store_1758203307842"
+DATA_STORE_ID = "spastha-final-datastore_1758347694410"  # Replace with your actual data store ID
 # --- END CONFIGURATION ---
 
 @functions_framework.cloud_event
 def ingest_document(cloud_event):
     """
-    Cloud Storage triggered function that automatically indexes newly uploaded documents
-    with user-specific metadata for document isolation.
+    Cloud Storage triggered function that automatically indexes newly uploaded documents.
     """
     try:
-        # Extract file information from the Cloud Storage event
         data = cloud_event.data
         bucket_name = data['bucket']
         file_name = data['name']
         
-        # Extract userId from file metadata or filename convention
-        # Option 1: If userId is embedded in filename (e.g., "user123_rental_agreement.pdf")
-        if '_' in file_name:
-            user_id = file_name.split('_')[0]
-        else:
-            # Fallback: use a default user or log an error
-            user_id = "default_user"
-            print(f"Warning: Could not extract userId from filename {file_name}")
-        
-        print(f"Processing document: {file_name} for user: {user_id}")
-        
-        # Create the document URI for Vertex AI
+        # Skip if not a PDF file
+        if not file_name.lower().endswith('.pdf'):
+            print(f"Skipping non-PDF file: {file_name}")
+            return
+            
+        print(f"Processing document: {file_name}")
         document_uri = f"gs://{bucket_name}/{file_name}"
-        
-        # Index the document with user metadata
-        index_document_with_metadata(document_uri, user_id, file_name)
-        
-        print(f"Successfully indexed document {file_name} for user {user_id}")
+        index_document(document_uri, file_name)
+        print(f"Successfully indexed document {file_name}")
         
     except Exception as e:
         print(f"Error processing document ingestion: {e}")
         raise e
 
-def index_document_with_metadata(document_uri: str, user_id: str, file_name: str):
+def index_document(document_uri: str, file_name: str):
     """
-    Index a document in Vertex AI Search with user-specific metadata
+    Indexes a document in Vertex AI Search.
     """
     client_options = (
-        ClientOptions(api_endpoint=f"{LOCATION}-discoveryengine.googleapis.com")
-        if LOCATION != "global"
-        else None
+        ClientOptions(api_endpoint=f"{LOCATION}-discoveryengine.googleapis.com") 
+        if LOCATION != "global" else None
     )
-    
-    # Use DocumentService for programmatic document indexing
     client = discoveryengine.DocumentServiceClient(client_options=client_options)
     
-    # Construct the parent path
     parent = client.branch_path(
         project=PROJECT_ID,
         location=LOCATION,
@@ -65,14 +52,19 @@ def index_document_with_metadata(document_uri: str, user_id: str, file_name: str
         branch="default_branch"
     )
     
-    # Create document with user metadata
+    # More robust document ID sanitization
+    sanitized_file_name = re.sub(r'[^a-zA-Z0-9_-]', '-', file_name.lower())
+    # Ensure ID doesn't start with a number and isn't too long
+    if sanitized_file_name[0].isdigit():
+        sanitized_file_name = 'doc-' + sanitized_file_name
+    sanitized_file_name = sanitized_file_name[:100]  # Limit length
+    
     document = discoveryengine.Document(
-        id=f"{user_id}_{file_name}",  # Unique document ID
+        id=sanitized_file_name,
         struct_data={
             "title": file_name,
-            "user_id": user_id,  # Critical: This enables user-specific filtering
             "document_type": "legal_document",
-            "upload_timestamp": "2024-01-01"  # You can use actual timestamp
+            "upload_timestamp": str(os.environ.get('TIMESTAMP', '')),
         },
         content=discoveryengine.Document.Content(
             uri=document_uri,
@@ -80,7 +72,6 @@ def index_document_with_metadata(document_uri: str, user_id: str, file_name: str
         )
     )
     
-    # Create the document in the data store
     request = discoveryengine.CreateDocumentRequest(
         parent=parent,
         document=document,
@@ -89,5 +80,4 @@ def index_document_with_metadata(document_uri: str, user_id: str, file_name: str
     
     operation = client.create_document(request=request)
     print(f"Document indexing initiated. Operation: {operation.name}")
-    
     return operation
