@@ -11,6 +11,7 @@ class ProfessionEnum(str, Enum):
 class LoginSchema(Schema):
     username :str
     password:str
+    recaptcha_token: str
 
 class TokenSchema(Schema):
     access: str
@@ -25,3 +26,4 @@ class SignupSchema(Schema):
     date_of_birth : Optional[date] = None
     profession : Optional[ProfessionEnum] = None
     mobile_no : Optional[str] = None
+    recaptcha_token: str
