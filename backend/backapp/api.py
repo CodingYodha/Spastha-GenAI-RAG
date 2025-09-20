@@ -11,8 +11,34 @@ from django.core.mail import send_mail
 from django.contrib.auth.tokens import default_token_generator
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes
+import google.auth.transport.requests
+from google.auth import impersonated_credentials
+from google.auth import jwt 
 
 api = NinjaAPI(title="Spasht API Docs")
+
+@api.get("/get-gcp-token")
+def get_gcp_token(request):
+    user = request.user
+    if not user.is_authenticated:
+        return api.create_response(request, {"error": "Unauthorized"}, status=401)
+    target_scopes = ["https://www.googleapis.com/auth/devstorage.read_write"]
+    request_adapter = google.auth.transport.requests.Request()
+    wif_credentials = jwt.Credentials.from_signing_credentials(
+        signing_credentials=settings.GCP_SIGNING_CREDENTIALS,
+        issuer=settings.GCP_ISSUER,
+        subject=user.username,
+        audience=settings.GCP_AUDIENCE,
+    )
+    impersonated_creds = impersonated_credentials.Credentials(
+        source_credentials=wif_credentials,
+        target_principal=settings.GCP_SERVICE_ACCOUNT,
+        target_scopes=target_scopes,
+        lifetime=900, 
+    )
+    access_token = impersonated_creds.token
+    impersonated_creds.refresh(request_adapter)
+    return {"access_token": impersonated_creds.token}
 
 def verify_recaptcha(token: str) -> bool:
     url = "https://www.google.com/recaptcha/api/siteverify"
