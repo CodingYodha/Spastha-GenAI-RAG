@@ -15,6 +15,9 @@ import google.auth.transport.requests
 from google.auth import impersonated_credentials
 from google.auth import jwt 
 from typing import List
+from ninja.security import HttpBearer
+from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework_simplejwt.exceptions import TokenError
 
 api = NinjaAPI(title="Spasht API Docs")
 
@@ -136,20 +139,26 @@ def login(request, data: LoginSchema):
     refresh = RefreshToken.for_user(user)
     return {"access": str(refresh.access_token), "refresh": str(refresh)}
 
-@api.post("/chat/save", response=ChatMessageSchema)
+class JWTAuth(HttpBearer):
+    def authenticate(self, request, token):
+        auth = JWTAuthentication()
+        try:
+            validated_token = auth.get_validated_token(token)
+            user = auth.get_user(validated_token)
+            return user
+        except TokenError:
+            return None
+
+@api.post("/chat/save", response=ChatMessageSchema, auth=JWTAuth())
 def save_chat(request, message: str, is_bot: bool):
-    if not request.user.is_authenticated:
-        return api.create_response(request, {"error": "Unauthorized"}, status=401)
-    chat  =ChatMessage.objects.create(
-        user = request.user, 
-        message= message,
-        is_bot = is_bot
+    chat = ChatMessage.objects.create(
+        user=request.user, 
+        message=message,
+        is_bot=is_bot
     )
     return chat
 
-@api.get("/chat/history", response=List[ChatMessageSchema])
+@api.get("/chat/history", response=List[ChatMessageSchema], auth=JWTAuth())
 def chat_history(request):
-    if not request.user.is_authenticated:
-        return api.create_response(request, {"error": "Unauthorized"}, status=401)
     chats = ChatMessage.objects.filter(user=request.user).order_by("timestamp")
     return chats
