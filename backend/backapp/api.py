@@ -46,7 +46,16 @@ def verify_recaptcha(token: str) -> bool:
     payload = {"secret": settings.RECAPTCHA_PRIVATE_KEY, "response": token}
     r = requests.post(url, data=payload)
     result = r.json()
-    return result.get("success", False) and result.get("score", 0.5) >= 0.5
+
+    if not result.get("success", False):
+        return False
+
+    # Handle v3 keys (score exists)
+    if "score" in result:
+        return result["score"] >= 0.5
+
+    # For v2, success = True is enough
+    return True
 
 def send_verification_email(user):
     uid = urlsafe_base64_encode(force_bytes(user.pk))
