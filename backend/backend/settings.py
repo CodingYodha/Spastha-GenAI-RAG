@@ -63,6 +63,11 @@ PASSWORD_RESET_TIMEOUT  = 14400
 FRONTEND_URL = "http://localhost:3000"
 RECAPTCHA_PUBLIC_KEY = os.getenv("RECAPTCHA_PUBLIC_KEY")
 RECAPTCHA_PRIVATE_KEY = os.getenv("RECAPTCHA_PRIVATE_KEY")
+GCP_SIGNING_CREDENTIALS = os.getenv("GCP_SIGNING_CREDENTIALS") # or loaded as dict
+GCP_ISSUER = "https://your-django-api.com"           # issuer URL your pool trusts
+GCP_AUDIENCE = os.getenv("GCP_AUDIENCE") #"//iam.googleapis.com/projects/PROJECT_NUMBER/locations/global/workloadIdentityPools/POOL_ID/providers/PROVIDER_ID"
+GCP_SERVICE_ACCOUNT = os.getenv("GCP_SERVICE_ACCOUNT_EMAIL")  # service account to impersonate
+
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',

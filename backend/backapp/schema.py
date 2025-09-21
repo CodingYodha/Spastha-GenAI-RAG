@@ -1,5 +1,5 @@
 from ninja import Schema
-from datetime import date
+from datetime import date, datetime
 from typing import Optional
 from enum import Enum
 
@@ -27,3 +27,10 @@ class SignupSchema(Schema):
     profession : Optional[ProfessionEnum] = None
     mobile_no : Optional[str] = None
     recaptcha_token: str
+
+class ChatMessageSchema(Schema):
+    message: str
+    is_bot: bool
+    timestamp: datetime
+    class Config:
+        orm_mode = True
