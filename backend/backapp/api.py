@@ -43,7 +43,7 @@ def get_gcp_token(request):
 
 def verify_recaptcha(token: str) -> bool:
     url = "https://www.google.com/recaptcha/api/siteverify"
-    payload = {"secret": settings.RECAPTCHA_SECRET_KEY, "response": token}
+    payload = {"secret": settings.RECAPTCHA_PRIVATE_KEY, "response": token}
     r = requests.post(url, data=payload)
     result = r.json()
     return result.get("success", False) and result.get("score", 0.5) >= 0.5
@@ -65,7 +65,6 @@ def send_verification_email(user):
 def signup(request, data: SignupSchema):
     if not verify_recaptcha(data.recaptcha_token):
         return api.create_response(request, {"error": "reCAPTCHA failed"}, status=400)
-
     if SpashtUser.objects.filter(username=data.username).exists():
         raise ValidationError([{"loc": ["username"], "msg": "Username already exists"}])
     if SpashtUser.objects.filter(email=data.email).exists():

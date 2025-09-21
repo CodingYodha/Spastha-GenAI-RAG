@@ -9,3 +9,6 @@ django-phonenumber-field
 phonenumbers
 django-cors-headers
 google-auth
+daphne>=4.0.0
+channels>=4.0.0
+django-environ
